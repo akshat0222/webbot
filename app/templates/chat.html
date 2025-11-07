@@ -1,0 +1,358 @@
+ <!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        .chat-box { border: 1px solid #ccc; padding: 20px; border-radius: 10px; width: 500px; margin: 0 auto; }
+        .error { color: red; }
+        .answer { background: #f7f7f7; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .booking-form input { width: 100%; margin: 5px 0; padding: 8px; }
+        .booking-form button { padding: 10px; background: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .booking-form button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="chat-box">
+        <h2>Ask me something:</h2>
+
+        <form method="POST" action="/chat">
+            <input type="hidden" name="form_type" value="chat_form">
+            <input type="text" name="user_query" placeholder="Type your question..." style="width: 100%; padding: 10px;">
+            <button type="submit">Ask</button>
+        </form>
+
+        {% if error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+
+        {% if answer %}
+        <div class="answer">
+            <p><b>Bot:</b> {{ answer | safe }}</p>
+            <form method="POST" action="/chat" style="margin-top:10px;">
+                <input type="hidden" name="form_type" value="show_booking_form">
+                <button type="submit">📅 Book Appointment</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if show_booking_form %}
+        <div class="booking-form">
+            <h3>🗓️ Appointment Booking Form</h3>
+            <form method="POST" action="/chat">
+                <input type="hidden" name="form_type" value="booking_form">
+                <input type="text" name="name" placeholder="Your Full Name" required>
+                <input type="email" name="email" placeholder="Your Email" required>
+                <input type="text" name="phone" placeholder="Phone Number" required>
+                <input type="text" name="location" placeholder="Preferred Location" required>
+                <button type="submit">Book Appointment</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Appointment Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg: #0f1420;
+      --panel: #0d1320;
+      --panel-2: #0f172a;
+      --text: #e6e8ee;
+      --muted: #9aa3b2;
+      --bot-bubble: #111827;
+      --user-bubble: #2563eb;
+      --button: #2563eb;
+      --button-hover:#1e40af;
+      --input:#0b1020;
+      --border:#1f2937;
+      --success:#10b981;
+    }
+
+    html,body{
+      margin:0;
+      padding:0;
+      background:linear-gradient(180deg,#0b1020 0%, #0b1226 100%);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      height:100%;
+    }
+
+    .wrap{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:24px;
+    }
+
+    .phone {
+      width: 390px;
+      height: 760px;
+      border-radius: 28px;
+      background: #0b1020;
+      border: 1px solid #192133;
+      box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Header */
+    .header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:14px 16px;
+      background: #0e1424;
+      border-bottom:1px solid var(--border);
+      position:relative;
+    }
+    .back{
+      width:28px;height:28px;border-radius:8px;
+      display:flex;align-items:center;justify-content:center;
+      color:var(--muted);background:#0a0f1d;border:1px solid #172033;
+      cursor:pointer;user-select:none;
+    }
+    .avatar{
+      width:36px;height:36px;border-radius:50%;
+      background:#0a0f1d;border:1px solid #1b2540;
+      background-image:url("{{ url_for('static', filename='image.jpg') if false else '' }}");
+      background-size:cover;background-position:center;
+      display:flex;align-items:center;justify-content:center;
+      font-size:18px;
+    }
+    .title{
+      display:flex;flex-direction:column;line-height:1.1;
+    }
+    .title b{ font-weight:600; }
+    .status{ color:var(--success); font-size:12px; }
+
+    /* Chat area */
+    .chat{
+      flex:1;
+      background: radial-gradient(180px 80px at 20% 0%, rgba(37,99,235,.06), transparent 60%),
+                  radial-gradient(180px 80px at 80% 0%, rgba(16,185,129,.06), transparent 60%),
+                  #0b1020;
+      padding:14px 12px 12px;
+      overflow-y:auto;
+    }
+
+    .row{
+      display:flex; gap:8px; margin:8px 0; align-items:flex-end;
+    }
+    .row.bot{ justify-content:flex-start; }
+    .row.user{ justify-content:flex-end; }
+
+    .row .mini{
+      width:28px;height:28px;border-radius:50%;
+      background:#0a0f1d;border:1px solid #1b2540;
+      display:flex;align-items:center;justify-content:center;
+      font-size:14px;flex:0 0 28px;
+    }
+
+    .bubble{
+      max-width:70%;
+      padding:10px 12px;
+      border-radius:14px;
+      font-size:14px;
+      line-height:1.35;
+      border:1px solid rgba(255,255,255,.07);
+    }
+    .bot .bubble{
+      background: linear-gradient(180deg,#0f172a,#0b1226);
+      color:#e8edf7;
+    }
+    .user .bubble{
+      background: var(--user-bubble);
+      color:white;
+      border-color: rgba(255,255,255,.12);
+    }
+
+    .typing{
+      display:inline-flex;gap:5px;
+    }
+    .dot{
+      width:6px;height:6px;border-radius:50%;
+      background:#9aa3b2;opacity:.6;animation: blink 1.2s infinite;
+    }
+    .dot:nth-child(2){ animation-delay:.2s; }
+    .dot:nth-child(3){ animation-delay:.4s; }
+    @keyframes blink{
+      0%,80%,100%{ opacity:.2; transform:translateY(0) }
+      40%{ opacity:1; transform:translateY(-2px) }
+    }
+
+    .cta{
+      padding:12px;
+      border-top:1px solid var(--border);
+      background:#0d1426;
+      display:flex;gap:10px;
+      align-items:center;
+    }
+
+    .bigbtn{
+      flex:0 0 auto;
+      background: var(--button);
+      border:none; color:white;
+      padding:14px 18px; 
+      font-weight:600; cursor:pointer;
+      box-shadow: 0 6px 16px rgba(37,99,235,.35);
+      transition:.15s transform,.15s background;width:100%
+    }
+    /* .bigbtn:hover{ background:var(--button-hover); transform: translateY(-1px); } */
+
+    .composer{
+      display:flex; gap:8px; flex:1;
+      background:#0a0f1d;border:1px solid #172033;border-radius:12px;
+      padding:6px;
+    }
+    .composer input{
+      flex:1;background:transparent;border:none;color:var(--text);
+      padding:8px 10px; outline:none; font-size:14px;
+    }
+    .send{
+      width:40px;height:40px;border-radius:10px;border:none;cursor:pointer;
+      background:#1b2744; color:#c7d2fe;
+      display:flex;align-items:center;justify-content:center;
+    }
+
+    /* Booking form (modal-ish inside panel) */
+    .sheet{
+      padding:14px;
+      border-top:1px solid var(--border);
+      background:#0c1326;
+      animation: slideUp .25s ease-out;
+    }
+    @keyframes slideUp{
+      from{ transform: translateY(8px); opacity:0; }
+      to{ transform: translateY(0); opacity:1; }
+    }
+    .sheet h3{ margin:6px 0 10px 0; font-size:16px; }
+    .grid{ display:grid; gap:8px; }
+    .grid input{
+       padding:10px 12px; border-radius:10px;
+      background:#0a0f1d; border:1px solid #1b2540; color:var(--text);
+    }
+    .grid button{
+      padding:12px; border-radius:10px; border:none; cursor:pointer;
+      background:var(--button); color:white; font-weight:600;
+    }
+    .grid button:hover{ background:var(--button-hover); }
+    .error{ color:#f87171; margin:6px 0; }
+
+    /* Hide default outer container in simple mode */
+    .hidden{ display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="phone">
+
+      <!-- Header -->
+      <div class="header">
+        <div class="back" aria-label="Back">‹</div>
+        <div class="avatar">🤖</div>
+        <div class="title">
+          <b>Appointment Assistant</b>
+          <span class="status">Online</span>
+        </div>
+      </div>
+
+      <!-- Chat scroll area -->
+      <div class="chat" id="chat">
+        {% for m in messages %}
+            <div class="row {{ 'user' if m.role == 'user' else 'bot' }}">
+            {% if m.role == 'bot' %}<div class="mini">🤖</div>{% endif %}
+            <div class="bubble">{{ m.text | safe }}</div>
+            </div>
+        {% endfor %}
+        </div>
+
+        <!-- User message example (Jinja will inject your {{ answer }} / history) -->
+         
+        {% if answer %}
+        <div class="row user">
+          <div class="bubble">{{ answer | safe }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Typing dots -->
+  
+        <div id="thinker" class="row bot thinker hidden">
+            <div class="mini">🤖</div>
+            <div class="bubble">
+                <span class="typing">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </span>
+            </div>
+        </div>
+
+
+         
+        <form method="POST" action="/chat">
+            <button class="bigbtn" name="form_type" value="show_booking_form" type="submit">Book Appointment</button>
+        </form>
+        <!-- Booking sheet -->
+      {% if show_booking_form %}
+      <div class="sheet">
+        <h3>🗓️ Appointment Booking</h3>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <form method="POST" action="/chat" class="grid">
+          <input type="hidden" name="form_type" value="booking_form">
+          <input type="text" name="name" placeholder="Your Full Name" required>
+          <input type="email" name="email" placeholder="Your Email" required>
+          <input type="text" name="phone" placeholder="Phone Number" required>
+          <input type="text" name="location" placeholder="Preferred Location" required>
+          <button type="submit">Confirm Booking</button>
+        </form>
+      </div>
+      {% endif %}
+      <div class="cta">
+        <form method="POST" action="/chat" style="display:flex; gap:8px; width:100%; flex:1;">
+            <input type="hidden" name="form_type" value="chat_form">
+            <div class="composer" style="flex:1;">
+            <input type="text" name="user_query" placeholder="Type your message..." autocomplete="off" required />
+            <button class="send" type="submit">➤</button>
+            </div>
+        </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</body>
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const chatForm = document.querySelector('form[action="/chat"][method="POST"] input[name="form_type"][value="chat_form"]')
+      ?.closest('form');
+    if (chatForm){
+      chatForm.addEventListener('submit', function(){
+        const t = document.getElementById('thinker');
+        if (t) t.classList.remove('hidden');
+
+        // prevent double submit
+        const btn = chatForm.querySelector('button[type="submit"]');
+        if (btn){ btn.disabled = true; btn.style.opacity = '0.7'; }
+      });
+    }
+
+    // auto-scroll chat to bottom
+    const chat = document.getElementById('chat');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  });
+</script>
+
+
+<style>
+.hidden{ display:none; }
+</style>
+</html>
+
